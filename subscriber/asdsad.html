@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>MQTT Image Subscriber</title>
+</head>
+<body>
+  <h1>MQTT Image Subscriber</h1>
+  <div id="imageContainer"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+
+  <script>
+    // Fungsi callback saat pesan diterima
+    function onMessageArrived(message) {
+      console.log("Pesan diterima: " + message.payloadString);
+
+      // Mendekode gambar yang dienkripsi ke base64 dari MQTT
+      decodeImageFromMQTT(message.payloadString);
+
+      console.log("Gambar berhasil didekode!");
+    }
+
+    // Mendekode gambar yang dienkripsi ke base64 dari MQTT
+    function decodeImageFromMQTT(mqttMessage) {
+      // Mendekode pesan MQTT dari base64 ke binary
+      const decodedImage = atob(mqttMessage);
+
+      // Mengonversi binary ke Uint8Array
+      const uint8Array = new Uint8Array(decodedImage.length);
+      for (let i = 0; i < decodedImage.length; i++) {
+        uint8Array[i] = decodedImage.charCodeAt(i);
+      }
+
+      // Membuat blob dari Uint8Array
+      const blob = new Blob([uint8Array], { type: "image/jpeg" });
+
+      // Membuat URL objek dari blob
+      const urlObject = URL.createObjectURL(blob);
+
+      // Menampilkan gambar di HTML
+      const imgElement = document.createElement("img");
+      imgElement.src = urlObject;
+      document.getElementById("imageContainer").appendChild(imgElement);
+    }
+
+    // Membuat koneksi MQTT
+    const client = new Paho.MQTT.Client("www.pakwahyu.my.id", 8080, "ersk232");
+
+    // Menghubungkan klien ke broker
+    client.connect({ onSuccess: onConnect });
+
+    // Fungsi callback saat koneksi berhasil dibuat
+    function onConnect() {
+      console.log("Koneksi berhasil dibuat!");
+
+      // Berlangganan topik test/kirim
+      client.subscribe("test/kirim");
+
+      // Fungsi callback saat pesan diterima
+      client.onMessageArrived = onMessageArrived;
+
+      // Fungsi callback saat pesan dikirim
+      client.onMessageDelivered = onMessageDelivered;
+
+      // Fungsi callback saat koneksi terputus
+      client.onConnectionLost = onConnectionLost;
+
+      console.log("Menunggu pesan...");
+    }
+
+    // Fungsi callback saat pesan dikirim
+    function onMessageDelivered(message) {
+      console.log("Pesan berhasil dikirim: " + message.payloadString);
+    }
+
+    // Fungsi callback saat koneksi terputus
+    function onConnectionLost(responseObject) {
+      if (responseObject.errorCode !== Paho.MQTT.CONNECTION_LOST) {
+        console.log("Koneksi terputus: " + responseObject.errorMessage);
+      }
+
+      console.log("Koneksi terputus!");
+    }
+  </script>
+</body>
+</html>
